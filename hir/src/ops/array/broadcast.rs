@@ -24,6 +24,13 @@ impl Expansion for MultiBroadcastTo {
         check_output_arity(&outputs, 1)?;
         s.equals(&outputs[0].datum_type, &inputs[0].datum_type)?;
         s.equals(&inputs[1].rank, 1)?;
+        s.given_2(&inputs[1].shape[0], &inputs[0].rank, move |s, l, r| {
+            if let Ok(l) = l.to_i64() {
+                let output_rank = l.max(r);
+                s.equals(&outputs[0].rank, output_rank)?;
+            }
+            Ok(())
+        })?;
         s.given(&inputs[0].shape, move |s, shape| {
             s.given(&inputs[1].value, move |s, dims| {
                 let dims = dims.cast_to::<TDim>()?;
@@ -46,7 +53,7 @@ impl Expansion for MultiBroadcastTo {
             let shape = shape.cast_to::<TDim>()?;
             let shape = shape.as_slice::<TDim>()?;
             let dims = tract_core::broadcast::multi_broadcast(&[&*input_shape, &*shape])
-                .context("incompatible shapes")?;
+                .with_context(|| format!("broadcasting {:?} to {:?}", input_shape, shape))?;
             let op = Typed::new(dims.into());
             model.wire_node(prefix, op, &[inputs[0]])
         } else {

@@ -12,7 +12,15 @@ impl Op for Range {
     }
 
     op_hir!();
-    not_a_typed_op!();
+    op_as_typed_op!();
+}
+
+impl TypedOp for Range {
+    fn output_facts(&self, inputs: &[&TypedFact]) -> TractResult<TVec<TypedFact>> {
+        Ok(tvec!(TypedFact::dt_shape(inputs[0].datum_type, &[TDim::from(Symbol::new('r'))])))
+    }
+
+    as_op!();
 }
 
 impl EvalOp for Range {
@@ -21,13 +29,13 @@ impl EvalOp for Range {
     }
 
     fn eval(&self, mut inputs: TVec<Arc<Tensor>>) -> TractResult<TVec<Arc<Tensor>>> {
-        let (start, limit, delta) = args_3!(inputs);
+        let (start, limit, steps) = args_3!(inputs);
         let dt = start.datum_type();
         let start = start.cast_to_scalar::<u64>()?;
         let limit = limit.cast_to_scalar::<u64>()?;
-        let delta = delta.cast_to_scalar::<u64>()?;
-        let value = Array1::from_shape_fn(((limit - start) / delta) as usize, |ix| {
-            ix as u64 * delta + start
+        let steps = steps.cast_to_scalar::<u64>()?;
+        let value = Array1::from_shape_fn(((limit - start) / steps) as usize, |ix| {
+            ix as u64 * steps + start
         });
         let value = value.into_tensor().cast_to_dt(dt)?.into_owned();
         Ok(tvec!(value.into_arc_tensor()))
@@ -53,15 +61,6 @@ impl InferenceRulesOp for Range {
         Ok(())
     }
 
+    to_typed!();
     as_op!();
-
-    fn to_typed(
-        &self,
-        _source: &InferenceModel,
-        _node: &InferenceNode,
-        _target: &mut TypedModel,
-        _mapping: &HashMap<OutletId, OutletId>,
-    ) -> TractResult<TVec<OutletId>> {
-        bail!("Range input are expected to be constant")
-    }
 }
