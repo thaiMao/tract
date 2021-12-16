@@ -1,15 +1,29 @@
 //! N-way tensor broadcast
 use tract_data::internal::*;
 
+pub fn multi_broadcast_one_dim<D: DimLike>(dims: &[impl AsRef<D>]) -> Option<D> {
+    let mut wanted_dim = D::one();
+    for dim in dims {
+        let dim = dim.as_ref();
+        if dim != &D::one() {
+            if wanted_dim != D::one() && dim != &wanted_dim {
+                return None;
+            }
+            wanted_dim = dim.clone();
+        }
+    }
+    Some(wanted_dim)
+}
+
 /// Computes a shape, if any, to which all shapes can be broadcasted.
 pub fn multi_broadcast<D>(shapes: &[impl AsRef<[D]>]) -> Option<TVec<D>>
 where
     D: DimLike,
 {
     let one = D::one();
-    let len = shapes.iter().map(|shape| shape.as_ref().len()).max()?;
+    let rank = shapes.iter().map(|shape| shape.as_ref().len()).max()?;
     let mut shape: TVec<D> = tvec!();
-    for i in 0..len {
+    for i in 0..rank {
         let mut wanted_size = D::one();
         for shape in shapes {
             let len = shape.as_ref().len();

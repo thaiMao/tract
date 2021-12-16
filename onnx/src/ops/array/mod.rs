@@ -19,7 +19,7 @@ pub fn register_all_ops(reg: &mut OnnxOpRegister) {
     reg.insert("Concat", concat);
     reg.insert("ConstantLike", constant_like);
     reg.insert("ConstantOfShape", constant_of_shape);
-    reg.insert("Expand", |_, _| Ok((expand(array::MultiBroadcastTo::default()), vec![])));
+    reg.insert("Expand", |_, _| Ok((Box::new(array::MultiBroadcastTo::default()), vec![])));
     reg.insert("EyeLike", eye_like);
     reg.insert("Flatten", flatten);
     reg.insert("Gather", gather);
