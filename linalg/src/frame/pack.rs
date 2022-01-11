@@ -1,23 +1,27 @@
 use std::fmt::Debug;
 use std::marker::PhantomData;
+use strength_reduce::StrengthReducedUsize;
 use tract_data::internal::*;
 
-#[derive(Clone, Debug, Eq, PartialEq, Educe)]
-#[educe(Hash)]
+#[derive(Clone, Debug, Educe)]
+#[educe(Hash, PartialEq, Eq)]
 pub struct Packer {
     k: usize,
     r: usize,
     alignment: usize,
     end_padding_record: usize,
+    #[educe(PartialEq(ignore))]
+    #[educe(Hash(ignore))]
+    r_reduced: StrengthReducedUsize,
 }
 
 impl Packer {
-    pub fn new(k: usize, nr: usize, alignment: usize, end_padding_record: usize) -> Packer {
-        Packer { k, r: nr, alignment, end_padding_record }
-    }
-
     pub fn k(&self) -> usize {
         self.k
+    }
+
+    pub fn new(k: usize, nr: usize, alignment: usize, end_padding_record: usize) -> Packer {
+        Packer { k, r: nr, alignment, end_padding_record, r_reduced: StrengthReducedUsize::new(nr) }
     }
 
     pub fn alignment(&self) -> usize {
@@ -99,7 +103,7 @@ impl Packer {
         pb: &'p mut [T],
         mn: usize,
     ) -> KOutWriter<'p, T> {
-        KOutWriter::new(pb, self.r, mn, self.k)
+        KOutWriter::new(pb.as_mut_ptr(), self.r, self.r_reduced, mn, self.k)
     }
 
     pub fn write_with_k_inner<'p, T: Copy + Debug>(
@@ -107,7 +111,7 @@ impl Packer {
         pb: &'p mut [T],
         mn: usize,
     ) -> KInWriter<'p, T> {
-        KInWriter::new(pb, self.r, mn, self.k)
+        KInWriter::new(pb.as_mut_ptr(), self.r, self.r_reduced, mn, self.k)
     }
 }
 
@@ -131,11 +135,17 @@ impl<'p, T> KOutWriter<'p, T>
 where
     T: Copy + std::fmt::Debug,
 {
-    pub fn new(data: &'p mut [T], panel_width: usize, mn: usize, k: usize) -> KOutWriter<'p, T> {
-        let panels = (mn + panel_width - 1) / panel_width;
+    pub fn new(
+        ptr: *mut T,
+        panel_width: usize,
+        panel_width_reduced: StrengthReducedUsize,
+        mn: usize,
+        k: usize,
+    ) -> KOutWriter<'p, T> {
+        let panels = (mn + panel_width - 1) / panel_width_reduced;
         let last_panel_width = mn - (panels - 1) * panel_width;
         KOutWriter {
-            ptr: data.as_mut_ptr(),
+            ptr,
             panels,
             panel_width,
             last_panel_width,
@@ -194,11 +204,17 @@ impl<'p, T> KInWriter<'p, T>
 where
     T: Copy + Debug,
 {
-    pub fn new(data: &'p mut [T], panel_width: usize, mn: usize, k: usize) -> KInWriter<'p, T> {
-        let panels = (mn + panel_width - 1) / panel_width;
+    pub fn new(
+        ptr: *mut T,
+        panel_width: usize,
+        panel_width_reduced: StrengthReducedUsize,
+        mn: usize,
+        k: usize,
+    ) -> KInWriter<'p, T> {
+        let panels = (mn + panel_width - 1) / panel_width_reduced;
         let last_panel_width = mn - (panels - 1) * panel_width;
         KInWriter {
-            ptr: data.as_mut_ptr(),
+            ptr,
             k,
             panels,
             panel_width,
