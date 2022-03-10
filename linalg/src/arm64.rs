@@ -132,6 +132,7 @@ pub fn plug(ops: &mut Ops) {
         _ => ops.set_cost_models(cortex_a53::models()),
     }
     if *KIND == Kind::CortexA55 {
+        ops.mmm_f16 = Some(Box::new(|_, _, _| { arm64fp16_mmm_f16_16x8_a55::mmm() }));
         ops.mmm_f32 = Some(Box::new(|_, _, n| {
             if n.unwrap_or(8) < 8 {
                 arm64simd_mmm_f32_16x4_a55::mmm()
