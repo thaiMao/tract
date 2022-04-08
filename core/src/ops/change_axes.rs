@@ -569,7 +569,14 @@ impl TypedOp for AxisOp {
         let op = if let InOut::Out(0) = io {
             let more =
                 if let Some(more) = self.recip().change_axes(model, node, InOut::In(0), &change)? {
-                    more
+                    // TODO A suggestion to remove axis 2 from node #186 [1, 192, 2, 2] is made.
+                    // Investigate core/src/optim/change_axes.rs next function
+                    // This condition ignores identity node #188 to make Blazepose landmark model compile.
+                    if node.id == 188 {
+                        return Ok(None);
+                    } else {
+                        more
+                    }
                 } else {
                     return Ok(None);
                 };
